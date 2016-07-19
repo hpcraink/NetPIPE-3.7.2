@@ -5,17 +5,26 @@
 #      mpi         : will use mpicc to compile
 #      mplite      : It will look for the MP_Lite library in $HOME/mplite
 #      tcp         : You start the receiver and transmitter manually
+#      ipx         : Uses IPX sockets
 #      paragon     : Uses MPI on the Paragon
 #      pvm         : Old version doesn't use pvm_spawn
 #                    Use 'NPpvm -r' on receiver and 'NPpvm' on transmitter
 #      tcgmsg      : Run directly on TCGMSG
 #      tcgmsg-mpich: Test TCGMSG layer on top of mpich
 #      lapi        : Test the LAPI interface on the IBM SP
+#      armci       : Directly measure ARMCI
+#      ib          : Directly measure InfiniBand using VAPI
+#      ibv         : Directly measure InfiniBand using ibVERBS
+#      udapl       : Directly measure InfiniBand using UDAPL
 #      mx          : Directly measure MX / Open-MX
 #      gm          : Directly measure raw GM on Myrinet
 #                    Use 'NPgm -r' on receiver and 'NPgm -t -h ...' on trans
 #      shmem       : Directly measure SHMEM on Cray and SGI systems
 #      gpshmem     : Measure GPSHMEM on any other system using shmem.c
+#      oshmem      : Measure OpenSHMEM performance
+#
+#      knem        : Measure using Linux' KNEM shared memory calls.
+#      vmsplice    : Measure using Linux' IO vmsplice() system calls.
 #
 #      For more information, see the function printusage() in netpipe.c
 #
@@ -30,6 +39,7 @@ SRC        = ./src
 MPICC       = mpicc
 
 MP_Lite_home   = $(HOME)/MP_Lite
+SHMEMCC    = oshcc
 
 PVM_HOME   = /usr/share/pvm3
 PVM_ARCH   = LINUX
@@ -55,6 +65,9 @@ MX_LIB = -L$(MX_HOME)/lib -lmyriexpress -lpthread
 
 GPSHMEM_LIB = $(HOME)/np/ga/gpshmem/lib/libgpshmem.a
 GPSHMEM_INC = $(HOME)/np/ga/gpshmem/include
+
+SHMEM_LIB   = -loshmem
+SHMEM_INC   = .
 
 ARMCI_LIB   = $(HOME)/armci/lib/LINUX/libarmci.a -lm
 ARMCI_INC   = $(HOME)/armci/src
@@ -232,14 +245,18 @@ t3e: $(SRC)/shmem.c $(SRC)/netpipe.c $(SRC)/netpipe.h
            $(SRC)/shmem.c -o NPshmem
 
 shmem: $(SRC)/shmem.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	$(CC) $(CFLAGS) -DSHMEM $(SRC)/netpipe.c \
-           $(SRC)/shmem.c -o NPshmem -lsma
+	$(SHMEMCC) $(CFLAGS) -DSHMEM $(SRC)/netpipe.c \
+           $(SRC)/shmem.c -I$(SHMEM_INC) -o NPshmem $(SHMEM_LIB)
 
 gpshmem: $(SRC)/gpshmem.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
-	mpichcc $(CFLAGS) -DGPSHMEM -DSHMEM $(SRC)/netpipe.c \
+	$(SHMEMCC) $(CFLAGS) -DGPSHMEM -DSHMEM $(SRC)/netpipe.c \
            $(SRC)/gpshmem.c -I$(GPSHMEM_INC) -o NPgpshmem $(GPSHMEM_LIB) \
            $(ARMCI_LIB)
 	@ rm -f netpipe.o gpshmem.o
+
+oshmem: $(SRC)/oshmem.c $(SRC)/netpipe.c $(SRC)/netpipe.h
+	$(SHMEMCC) $(CFLAGS) -DOSHMEM -DSHMEM $(SRC)/netpipe.c \
+           $(SRC)/oshmem.c -I$(SHMEM_INC) -o NPoshmem $(SHMEM_LIB)
 
 paragon: $(SRC)/mpi.c $(SRC)/netpipe.c $(SRC)/netpipe.h 
 	$(CC) -nx $(CFLAGS) -DMPI $(SRC)/netpipe.c \
