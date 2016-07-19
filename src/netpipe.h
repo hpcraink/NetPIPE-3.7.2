@@ -241,11 +241,26 @@ enum communication_types {
   #else
     #include <mpp/shmem.h>
   #endif
+
+  /* Select, whether we SHMEM_WAIT or busy-wait (on the actual data...) */
+#if defined(OSHMEM)
+  #define SHMEM_WAIT
+#endif
+  // #define SCHED_YIELD
+  // #define SCHED_DEBUG
+
+  #include <sched.h>
+
   typedef struct protocolstruct ProtocolStruct;
   struct protocolstruct
   {
           int nbor,ipe;
+#if defined(SHMEM_WAIT)
+          int *flag;
+#else
+          // We may do busy-looping, so volatile hinders compiler from optimizing access.
           volatile int *flag;
+#endif
   };
 
 #elif defined(ARMCI)
